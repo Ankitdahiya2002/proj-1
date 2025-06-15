@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Jupyter / notebooks / logs
+*.ipynb_checkpoints
+*.log
+
+# Environments
+.env
+.venv/
+env/
+venv/
+
+# Streamlit
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# Audio / temp files
+*.mp3
+*.wav
+*.tmp
+temp_audio/
+
+# OS
+.DS_Store
+Thumbs.db
