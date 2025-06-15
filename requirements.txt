@@ -7,3 +7,4 @@ pydub
 PyPDF2
 openpyxl
 numpy
+google-generativeai
