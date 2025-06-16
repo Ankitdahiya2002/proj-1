@@ -73,7 +73,8 @@ def signup_ui():
         token = str(uuid.uuid4())
 
         if create_user(email, hashed, name=name, profession=profession, verification_token=token):
-            verify_link = f"http://localhost:8501/?verify_token={token}"
+            verify_link = f"{st.secrets['APP_BASE_URL']}/?verify_token={token}"
+            # Send verification email
             send_email(
                 email,
                 "Verify your OMNISNT Account",
@@ -99,7 +100,8 @@ def reset_ui():
         expiry = datetime.now() + timedelta(minutes=30)
         update_reset_token(email, token, expiry)
 
-        reset_link = f"http://localhost:8501/?reset_token={token}"
+        reset_link = f"{st.secrets['APP_BASE_URL']}/?reset_token={token}"
+        # Send reset email
         send_email(
             email,
             "Password Reset - OMNISNT",

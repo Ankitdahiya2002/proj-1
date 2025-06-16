@@ -7,8 +7,6 @@ from email.mime.text import MIMEText
 
 # Gemini AI Setup
 GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-print("GEMINI_API_KEY Loaded:", bool(GEMINI_API_KEY))
-
 try:
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY is not set in Streamlit secrets.")
@@ -35,9 +33,7 @@ def gemini_model_object(user_input):
 
 
 def ai_chat_response(prompt: str) -> str:
-    """
-    Send the full prompt including conversation history to Gemini model.
-    """
+
     if not genai:
         return "Gemini is not properly configured. Check API key or SDK."
     try:

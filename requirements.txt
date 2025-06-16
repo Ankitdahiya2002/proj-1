@@ -9,3 +9,4 @@ PyPDF2
 openpyxl
 numpy
 PyMuPDF
+email-validator

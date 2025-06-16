@@ -1,5 +1,7 @@
+import os
+import sys
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 
 DB_FILE = "omnisicient.db"
@@ -27,6 +29,24 @@ def create_tables():
         profession TEXT,
         verified INTEGER DEFAULT 0,
         verification_token TEXT
+    )
+    """)
+
+    # Safe ALTER for verification_token_expiry
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN verification_token_expiry TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column likely exists
+
+    # Email logs table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS email_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipient TEXT,
+        subject TEXT,
+        status TEXT,
+        error TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )
     """)
 
@@ -59,15 +79,16 @@ def create_tables():
     conn.commit()
     conn.close()
 
-# User-related functions
+# User functions
 def create_user(email, password_hash, name=None, profession=None, role='user', verification_token=None):
     conn = get_connection()
     cursor = conn.cursor()
+    expiry = (datetime.now() + timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S")
     try:
         cursor.execute("""
-            INSERT INTO users (email, password, name, profession, role, verification_token)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (email, password_hash, name, profession, role, verification_token))
+            INSERT INTO users (email, password, name, profession, role, verification_token, verification_token_expiry)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (email, password_hash, name, profession, role, verification_token, expiry))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -86,18 +107,20 @@ def get_user(email):
 def verify_user_token(token):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE verification_token = ?", (token,))
+    cursor.execute("SELECT email, verification_token_expiry FROM users WHERE verification_token = ?", (token,))
     user = cursor.fetchone()
+
     if user:
-        cursor.execute("""
-            UPDATE users
-            SET verified = 1,
-                verification_token = NULL
-            WHERE verification_token = ?
-        """, (token,))
-        conn.commit()
-        conn.close()
-        return True
+        expiry = user["verification_token_expiry"]
+        if expiry and datetime.now() <= datetime.strptime(expiry, "%Y-%m-%d %H:%M:%S"):
+            cursor.execute("""
+                UPDATE users 
+                SET verified = 1, verification_token = NULL, verification_token_expiry = NULL 
+                WHERE verification_token = ?
+            """, (token,))
+            conn.commit()
+            conn.close()
+            return True
     conn.close()
     return False
 
@@ -174,7 +197,7 @@ def export_chats_to_csv():
     conn.close()
     return df.to_csv(index=False).encode('utf-8')
 
-# Uploaded files functions
+# File functions
 def save_uploaded_file(user_email, file_name, file_type, extracted_text):
     conn = get_connection()
     cursor = conn.cursor()
@@ -205,3 +228,24 @@ def get_file_content(file_id):
     result = cursor.fetchone()
     conn.close()
     return result["extracted_text"] if result else None
+
+# Safe database initialization with corruption handling
+def safe_initialize():
+    try:
+        create_tables()
+    except sqlite3.DatabaseError as e:
+        print(f"[ERROR] Database is corrupted: {e}")
+        try:
+            backup_path = DB_FILE + ".corrupt.bak"
+            os.rename(DB_FILE, backup_path)
+            print(f"[!] Backed up corrupted DB to: {backup_path}")
+        except Exception as backup_err:
+            print(f"[!] Backup failed: {backup_err}")
+        try:
+            os.remove(DB_FILE)
+            print("[✓] Corrupted DB deleted. Recreating...")
+            create_tables()
+            print("[✓] Database recreated successfully.")
+        except Exception as final_err:
+            print(f"[X] Failed to recreate database: {final_err}")
+            sys.exit(1)

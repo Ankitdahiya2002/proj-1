@@ -1,9 +1,6 @@
 import streamlit as st
 from src.auth import auth_page
-from src.db import (
-    create_tables, save_chat, get_user_chats, get_user,
-    save_uploaded_file, get_uploaded_files
-)
+from src.db import ( safe_initialize, save_chat, get_user_chats, get_user,save_uploaded_file, get_uploaded_files)
 from src.admin import show_admin_panel
 from src.helper import ai_chat_response
 from src.voice_input import get_voice_input
@@ -130,8 +127,8 @@ def show_user_panel():
 
 
 def main():
+    safe_initialize()
     st.set_page_config(page_title="OMNISNT AI Assistant", page_icon="🤖")
-    create_tables()
 
     if "user" not in st.session_state:
         auth_page()
