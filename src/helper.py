@@ -20,7 +20,7 @@ def gemini_model_object(user_input):
     if not genai:
         return "Gemini is not properly configured. Check API key or SDK."
     try:
-        model = genai.GenerativeModel("models/gemini-1.5-flash")
+        model = genai.GenerativeModel("models/gemini-2.0-flash-live-001")
         response = model.generate_content({
             "parts": [
                 {"text": user_input}

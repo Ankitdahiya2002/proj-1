@@ -1,42 +1,44 @@
 import streamlit as st
-from src.db import get_all_users, block_user, export_chats_to_csv, count_registered_users
+from src.db import (
+    get_all_users, block_user, export_chats_to_csv,
+    count_registered_users
+)
 from src.email_utils import send_email
 
+
 def show_admin_panel():
+    st.set_page_config(page_title="Admin Dashboard", page_icon="👑")
     st.title("👑 OMNISCENT Admin Dashboard")
 
-    # At the bottom of your `show_admin_panel()` function:
+    # --- Metrics Section
+    col1, col2 = st.columns(2)
+    with col1:
+        total_users = count_registered_users()
+        st.metric("Total Registered Users", total_users)
+
+    with col2:
+        st.metric("Admin Access", "✔️ Active")
+
     st.markdown("---")
-    st.subheader("🛠 Admin Utilities")
-    email_tester()
 
-
-    # Metrics
-    total_users = count_registered_users()
-    st.metric("Total Registered Users", total_users)
-
-    st.markdown("---")
-
-    # Search bar
+    # --- Search & Filter Users
+    st.subheader("📋 User Accounts")
     search_term = st.text_input("🔍 Search user by email or name")
 
-    # User list
-    st.subheader("📋 User Accounts")
-
     users = get_all_users()
-    users = sorted(users, key=lambda u: u["blocked"], reverse=True)  # Show blocked users first
+    users = sorted(users, key=lambda u: u.get("blocked", 0), reverse=True)
 
     if search_term:
         users = [
-            u for u in users if
-            search_term.lower() in u["email"].lower() or
-            search_term.lower() in u.get("name", "").lower()
+            u for u in users
+            if search_term.lower() in u["email"].lower()
+            or search_term.lower() in u.get("name", "").lower()
         ]
 
     if not users:
         st.info("No users found.")
     else:
-        for user in users:
+        for i, user in enumerate(users):
             col1, col2, col3 = st.columns([3, 1.2, 1])
             with col1:
                 st.markdown(f"""
@@ -45,33 +47,45 @@ def show_admin_panel():
                     🧑‍💼 *{user.get("profession", "Unknown")}*  
                     🛡️ Role: `{user.get("role", "user")}`
                 """)
-
             with col2:
                 blocked = bool(user.get("blocked", 0))
                 btn_label = "🔓 Unblock" if blocked else "🔒 Block"
-                btn_color = "secondary" if blocked else "danger"
-                if st.button(btn_label, key="block_" + user["email"]):
+                if st.button(btn_label, key=f"block_btn_{i}"):
                     block_user(user["email"], not blocked)
                     st.success(f"{'Unblocked' if blocked else 'Blocked'} {user['email']}")
                     st.experimental_rerun()
 
             with col3:
-                pass  # Reserved for future admin actions (e.g., delete, promote, etc.)
+                pass  # Reserved for future actions (e.g., promote/delete user)
 
-    #st.markdown("---")
+    st.markdown("---")
 
-    # Export all chats
+    # --- Export Chat Logs
     st.subheader("📤 Export All Chat Logs")
-    if st.button("Generate CSV"):
+    if st.button("📥 Generate CSV"):
         csv_data = export_chats_to_csv()
-        st.download_button("Download chat_history.csv", csv_data, "chat_history.csv", mime="text/csv")
+        st.download_button(
+            label="📄 Download chat_history.csv",
+            data=csv_data,
+            file_name="chat_history.csv",
+            mime="text/csv"
+        )
+
+    st.markdown("---")
+
+    # --- Email Testing Utility
+    st.subheader("📧 Send Test Email")
+    email_tester()
+
+
 def email_tester():
-    st.text_input("📨 Send Test Email To", key="test_email")
-    if st.button("Send Test Email"):
-        to = st.session_state.get("test_email", "")
-        if to:
-            success = send_email(to, "Test Email from OMNISNT", "<p>This is a test.</p>")
+    test_email = st.text_input("📨 Send Test Email To")
+    if st.button("✉️ Send Test Email"):
+        if test_email:
+            success = send_email(test_email, "Test Email from OMNISNT", "<p>This is a test email from the admin panel.</p>")
             if success:
-                st.success("Test email sent!")
+                st.success("✅ Test email sent successfully!")
             else:
-                st.error("Failed to send email.")
+                st.error("❌ Failed to send test email.")
+        else:
+            st.warning("Please enter a valid email address.")
