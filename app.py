@@ -1,7 +1,7 @@
 import streamlit as st
 
 # Set page config as the very first Streamlit call
-st.set_page_config(page_title="OMNISNT AI Assistant", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="OMNISNT AI Assistant", page_icon="👨🏼‍⚖️", layout="wide")
 
 from src.auth import auth_page
 from src.db import (
